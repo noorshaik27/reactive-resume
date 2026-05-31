@@ -86,18 +86,29 @@ services:
       - data_network
       - storage_network
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
-      - APP_URL=http://localhost:3000
+      # Public origin — must match Cloudflare tunnel hostname. Read from ./.env
+      - APP_URL=${APP_URL:-http://localhost:3002}
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
-      - AUTH_SECRET=change-me-to-a-secure-secret-key-in-production
+      # Real secrets pulled from ./.env. Compose substitutes ${VAR} from the
+      # project-level .env file at parse time. NEVER commit real values here.
+      - AUTH_SECRET=${AUTH_SECRET:?AUTH_SECRET must be set in .env}
+      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET:?ENCRYPTION_SECRET must be set in .env}
       - S3_ACCESS_KEY_ID=seaweedfs
       - S3_SECRET_ACCESS_KEY=seaweedfs
       - S3_ENDPOINT=http://seaweedfs:8333
       - S3_BUCKET=reactive-resume
       - S3_FORCE_PATH_STYLE=true
       - REDIS_URL=redis://redis:6379
-      - ENCRYPTION_SECRET=change-me-to-a-secure-agent-secret-in-production
+      # SMTP via Resend (optional — emails log to console if unset)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      # SSO bridge with Hireloom (LiveInterview) — shared HMAC secret
+      - HIRELOOM_SSO_SECRET=${HIRELOOM_SSO_SECRET:-}
     volumes:
       - ./data:/app/data
     depends_on:
