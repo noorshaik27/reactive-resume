@@ -140,6 +140,10 @@ export default defineConfig({
 		host: true,
 		strictPort: true,
 		port: Number.parseInt(process.env.PORT ?? "3000", 10),
+		// Allow specific external hostnames when the dev server runs behind a
+		// reverse proxy / tunnel (e.g. VITE_ALLOWED_HOSTS=resume.az-techbits.com).
+		// No effect unless the env var is set.
+		...(process.env.VITE_ALLOWED_HOSTS ? { allowedHosts: process.env.VITE_ALLOWED_HOSTS.split(",") } : {}),
 	},
 
 	plugins: [
