@@ -247,6 +247,7 @@ function CreateProviderForm() {
 						value={form.label}
 						onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))}
 						placeholder={t`Work OpenAI`}
+						autoComplete="off"
 					/>
 				</div>
 
@@ -275,6 +276,7 @@ function CreateProviderForm() {
 						value={form.model}
 						onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
 						placeholder={t`gpt-4.1`}
+						autoComplete="off"
 						autoCorrect="off"
 						autoCapitalize="off"
 						spellCheck="false"
@@ -291,6 +293,7 @@ function CreateProviderForm() {
 						value={form.baseURL}
 						onChange={(event) => setForm((current) => ({ ...current, baseURL: event.target.value }))}
 						placeholder={selectedOption?.defaultBaseURL || t`https://gateway.example.com/v1`}
+						autoComplete="off"
 						autoCorrect="off"
 						autoCapitalize="off"
 						spellCheck="false"
@@ -306,6 +309,9 @@ function CreateProviderForm() {
 						type="password"
 						value={form.apiKey}
 						onChange={(event) => setForm((current) => ({ ...current, apiKey: event.target.value }))}
+						// new-password tells Chrome this is not a login field, so it
+						// won't autofill a saved password here (or the email into Base URL).
+						autoComplete="new-password"
 						autoCorrect="off"
 						autoCapitalize="off"
 						spellCheck="false"
