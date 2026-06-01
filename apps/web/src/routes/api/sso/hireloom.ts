@@ -113,6 +113,23 @@ function suggestSlug(name: string): string {
 	return `${base}-${suffix}`;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// Recursively layer `override` onto `base` (arrays and scalars replace
+// wholesale). Lets a partial Hireloom payload keep its provided fields while
+// missing required sections fall back to defaults — without this, an incomplete
+// payload fails schema validation and the whole resume reverts to defaults.
+function deepMerge<T>(base: T, override: unknown): T {
+	if (!isPlainObject(base) || !isPlainObject(override)) return (override ?? base) as T;
+	const out: Record<string, unknown> = { ...base };
+	for (const [key, value] of Object.entries(override)) {
+		out[key] = isPlainObject(value) && isPlainObject(base[key]) ? deepMerge(base[key], value) : value;
+	}
+	return out as T;
+}
+
 async function handler({ request }: { request: Request }) {
 	const url = new URL(request.url);
 	// Token + next can travel either in the URL (GET) or the form body (POST).
@@ -218,10 +235,13 @@ async function handler({ request }: { request: Request }) {
 				.where(eq(sql`lower(${schema.user.email})`, email))
 				.limit(1);
 			if (user) {
-				// Never trust the POSTed shape: validate against the canonical
-				// resume schema and fall back to defaults so a malformed payload
-				// can't write garbage jsonb that crashes the builder.
-				const parsed = resumeDataSchema.safeParse(resumePayload.data);
+				// Never trust the POSTed shape: layer it onto the defaults so a
+				// partial payload keeps its fields, then validate against the
+				// canonical schema. Fall back to defaults only if the merged
+				// result is still invalid, so malformed input can't write garbage
+				// jsonb that crashes the builder.
+				const merged = deepMerge(defaultResumeData, resumePayload.data);
+				const parsed = resumeDataSchema.safeParse(merged);
 				if (!parsed.success) {
 					console.warn("[sso/hireloom] resume data failed validation; using defaults:", parsed.error.message);
 				}
