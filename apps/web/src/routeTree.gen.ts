@@ -45,6 +45,7 @@ import { Route as DashboardSettingsPreferencesRouteImport } from './routes/dashb
 import { Route as DashboardSettingsJobSearchRouteImport } from './routes/dashboard/settings/job-search'
 import { Route as DashboardSettingsDangerZoneRouteImport } from './routes/dashboard/settings/danger-zone'
 import { Route as DashboardSettingsApiKeysRouteImport } from './routes/dashboard/settings/api-keys'
+import { Route as ApiSsoHireloomRouteImport } from './routes/api/sso/hireloom'
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
 import { Route as ApiOpenapiSplatRouteImport } from './routes/api/openapi.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
@@ -242,6 +243,11 @@ const DashboardSettingsApiKeysRoute =
     path: '/settings/api-keys',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
+const ApiSsoHireloomRoute = ApiSsoHireloomRouteImport.update({
+  id: '/api/sso/hireloom',
+  path: '/api/sso/hireloom',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
   id: '/api/rpc/$',
   path: '/api/rpc/$',
@@ -328,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/openapi/$': typeof ApiOpenapiSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/api/sso/hireloom': typeof ApiSsoHireloomRoute
   '/dashboard/settings/api-keys': typeof DashboardSettingsApiKeysRoute
   '/dashboard/settings/danger-zone': typeof DashboardSettingsDangerZoneRoute
   '/dashboard/settings/job-search': typeof DashboardSettingsJobSearchRoute
@@ -370,6 +377,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/openapi/$': typeof ApiOpenapiSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/api/sso/hireloom': typeof ApiSsoHireloomRoute
   '/dashboard/settings/api-keys': typeof DashboardSettingsApiKeysRoute
   '/dashboard/settings/danger-zone': typeof DashboardSettingsDangerZoneRoute
   '/dashboard/settings/job-search': typeof DashboardSettingsJobSearchRoute
@@ -418,6 +426,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/openapi/$': typeof ApiOpenapiSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/api/sso/hireloom': typeof ApiSsoHireloomRoute
   '/dashboard/settings/api-keys': typeof DashboardSettingsApiKeysRoute
   '/dashboard/settings/danger-zone': typeof DashboardSettingsDangerZoneRoute
   '/dashboard/settings/job-search': typeof DashboardSettingsJobSearchRoute
@@ -466,6 +475,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/openapi/$'
     | '/api/rpc/$'
+    | '/api/sso/hireloom'
     | '/dashboard/settings/api-keys'
     | '/dashboard/settings/danger-zone'
     | '/dashboard/settings/job-search'
@@ -508,6 +518,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/openapi/$'
     | '/api/rpc/$'
+    | '/api/sso/hireloom'
     | '/dashboard/settings/api-keys'
     | '/dashboard/settings/danger-zone'
     | '/dashboard/settings/job-search'
@@ -555,6 +566,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/openapi/$'
     | '/api/rpc/$'
+    | '/api/sso/hireloom'
     | '/dashboard/settings/api-keys'
     | '/dashboard/settings/danger-zone'
     | '/dashboard/settings/job-search'
@@ -586,6 +598,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiOpenapiSplatRoute: typeof ApiOpenapiSplatRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
+  ApiSsoHireloomRoute: typeof ApiSsoHireloomRoute
   UploadsUserIdSplatRoute: typeof UploadsUserIdSplatRoute
   ApiUploadsUserIdSplatRoute: typeof ApiUploadsUserIdSplatRoute
 }
@@ -844,6 +857,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsApiKeysRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/api/sso/hireloom': {
+      id: '/api/sso/hireloom'
+      path: '/api/sso/hireloom'
+      fullPath: '/api/sso/hireloom'
+      preLoaderRoute: typeof ApiSsoHireloomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/rpc/$': {
       id: '/api/rpc/$'
       path: '/api/rpc/$'
@@ -1058,6 +1078,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiOpenapiSplatRoute: ApiOpenapiSplatRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
+  ApiSsoHireloomRoute: ApiSsoHireloomRoute,
   UploadsUserIdSplatRoute: UploadsUserIdSplatRoute,
   ApiUploadsUserIdSplatRoute: ApiUploadsUserIdSplatRoute,
 }

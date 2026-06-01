@@ -25,10 +25,15 @@
  *     handoff, so a leaked SSO secret can't forge native sign-ins
  */
 
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { eq, sql } from "drizzle-orm";
 import { auth } from "@reactive-resume/auth/config";
-import { toUsername } from "@reactive-resume/utils/string";
+import { db } from "@reactive-resume/db/client";
+import * as schema from "@reactive-resume/db/schema";
+import { resumeDataSchema } from "@reactive-resume/schema/resume/data";
+import { defaultResumeData } from "@reactive-resume/schema/resume/default";
+import { slugify, toUsername } from "@reactive-resume/utils/string";
 
 const MAX_TOKEN_AGE_MS = 60_000;
 const DEFAULT_NEXT = "/dashboard/resumes";
@@ -43,6 +48,7 @@ function hmacB64Url(secret: string, data: string): string {
 }
 
 type Payload = { email: string; name?: string; exp: number; nonce: string };
+type ResumePayload = { name?: string; data: Record<string, unknown> };
 
 function verifyAndParse(token: string, secret: string): Payload | null {
 	const [body, sig] = token.split(".");
@@ -78,10 +84,60 @@ function sanitizeNext(raw: string | null): string {
 	return raw;
 }
 
+async function readResumePayload(request: Request): Promise<ResumePayload | null> {
+	if (request.method !== "POST") return null;
+	const ctype = request.headers.get("content-type") ?? "";
+	try {
+		if (ctype.includes("application/x-www-form-urlencoded")) {
+			const fd = await request.formData();
+			const raw = fd.get("resumeData");
+			if (typeof raw !== "string" || raw.length === 0) return null;
+			const data = JSON.parse(raw) as Record<string, unknown>;
+			const name = typeof fd.get("resumeName") === "string" ? (fd.get("resumeName") as string) : undefined;
+			return { name, data };
+		}
+		if (ctype.includes("application/json")) {
+			const body = (await request.json()) as { resumeData?: Record<string, unknown>; resumeName?: string };
+			if (!body.resumeData) return null;
+			return { name: body.resumeName, data: body.resumeData };
+		}
+	} catch (e) {
+		console.warn("[sso/hireloom] resume payload parse failed:", e);
+	}
+	return null;
+}
+
+function suggestSlug(name: string): string {
+	const base = slugify(name || "resume").slice(0, 40) || "resume";
+	const suffix = randomBytes(4).toString("hex");
+	return `${base}-${suffix}`;
+}
+
 async function handler({ request }: { request: Request }) {
 	const url = new URL(request.url);
-	const token = url.searchParams.get("token");
-	const next = sanitizeNext(url.searchParams.get("next"));
+	// Token + next can travel either in the URL (GET) or the form body (POST).
+	let token = url.searchParams.get("token");
+	let next = url.searchParams.get("next");
+	let resumePayload: ResumePayload | null = null;
+
+	if (request.method === "POST") {
+		const cloned = request.clone();
+		resumePayload = await readResumePayload(request);
+		// Re-read for token (formData was consumed above only if it parsed)
+		try {
+			const ctype = cloned.headers.get("content-type") ?? "";
+			if (!token && ctype.includes("application/x-www-form-urlencoded")) {
+				const fd = await cloned.formData();
+				const t = fd.get("token");
+				const n = fd.get("next");
+				if (typeof t === "string") token = t;
+				if (typeof n === "string") next = n;
+			}
+		} catch {
+			/* form already consumed; token must be in URL */
+		}
+	}
+	const safeNext = sanitizeNext(next);
 
 	const ssoSecret = process.env.HIRELOOM_SSO_SECRET ?? "";
 	if (!ssoSecret) {
@@ -143,12 +199,48 @@ async function handler({ request }: { request: Request }) {
 		);
 	}
 
-	// Mirror Set-Cookie headers onto a 302 redirect.
+	// Mirror Set-Cookie headers onto the eventual redirect.
 	const headers = new Headers();
 	for (const value of signInResponse.headers.getSetCookie?.() ?? []) {
 		headers.append("Set-Cookie", value);
 	}
-	headers.set("Location", next);
+
+	// If a resume payload came in on POST, materialize it now and redirect to
+	// /builder/{id}. We bypass oRPC and insert via Drizzle because we already
+	// know the user's id from the just-completed sign-in — the route is
+	// guarded by HMAC validation against HIRELOOM_SSO_SECRET, so this is safe.
+	let redirectTo = safeNext;
+	if (resumePayload) {
+		try {
+			const [user] = await db
+				.select({ id: schema.user.id })
+				.from(schema.user)
+				.where(eq(sql`lower(${schema.user.email})`, email))
+				.limit(1);
+			if (user) {
+				// Never trust the POSTed shape: validate against the canonical
+				// resume schema and fall back to defaults so a malformed payload
+				// can't write garbage jsonb that crashes the builder.
+				const parsed = resumeDataSchema.safeParse(resumePayload.data);
+				if (!parsed.success) {
+					console.warn("[sso/hireloom] resume data failed validation; using defaults:", parsed.error.message);
+				}
+				const data = parsed.success ? parsed.data : defaultResumeData;
+				const name = (resumePayload.name ?? data.basics?.name ?? "Resume from Hireloom").slice(0, 80);
+				const slug = suggestSlug(name);
+				const [row] = await db
+					.insert(schema.resume)
+					.values({ userId: user.id, name, slug, data })
+					.returning({ id: schema.resume.id });
+				if (row?.id) redirectTo = `/builder/${row.id}`;
+			}
+		} catch (e) {
+			console.error("[sso/hireloom] resume insert failed:", e);
+			// Fall through to default redirect — user lands on dashboard,
+			// resume just isn't pre-populated.
+		}
+	}
+	headers.set("Location", redirectTo);
 	return new Response(null, { status: 302, headers });
 }
 
@@ -156,6 +248,7 @@ export const Route = createFileRoute("/api/sso/hireloom")({
 	server: {
 		handlers: {
 			GET: handler,
+			POST: handler,
 		},
 	},
 });
