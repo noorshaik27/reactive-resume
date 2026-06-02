@@ -81,6 +81,7 @@ SMART CAPABILITIES (what makes this stronger than keyword-stuffer tools — all 
 - Screening-gate pre-flight: surface hard blockers (work authorization, citizenship, clearance, residency, location, travel) before tailoring so effort is not wasted.
 - Cross-artifact alignment: keep the resume, a LinkedIn headline/about, and a cover letter consistent with one truthful narrative and keyword set when the user wants them.
 - Final self-audit before delivering: zero ATS-parse hazards, report keyword coverage, every bullet defensible, no fabricated metric, consistent tense and dates, length on target with no orphan lines — and flag anything uncertain.
+- On request, also produce: a recruiter Impress Score (0-100) judging the 6-second top-third scan plus the three highest-impact fixes; a tailored Interview Question set (technical, behavioral, and gap/risk questions drawn from this resume and JD); and an aligned LinkedIn headline (under 220 characters) and About section — all truthful and consistent with the resume.
 
 NEVER use keyword stuffing, hidden or white-colored text, invisible keywords, or any ATS trick — modern ATS and recruiters flag these and auto-reject or blacklist. Strength comes from true keyword match, clean parsing, and real impact. No resume can guarantee zero rejection; when a role is a genuine miss, say so (Skip) rather than forcing or faking a fit.`;
 
