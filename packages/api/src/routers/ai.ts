@@ -238,4 +238,52 @@ export const aiRouter = {
 				throw error;
 			}
 		}),
+
+	resumeToolkit: protectedProcedure
+		.route({
+			method: "POST",
+			path: "/ai/resume-toolkit",
+			tags: ["AI"],
+			operationId: "resumeToolkit",
+			summary: "Generate a recruiter Impress Score, interview questions, or LinkedIn content",
+			description:
+				"Uses AI to produce a recruiter-view artifact (impress score, interview questions, or LinkedIn headline + About) from the current resume and an optional job description, returned as Markdown. Requires authentication and AI credentials.",
+		})
+		.input(
+			z.object({
+				aiProviderId: z.string().optional(),
+				resumeId: z.string(),
+				kind: z.enum(["impress-score", "interview-questions", "linkedin"]),
+				jobDescription: z.string().max(50_000).optional(),
+				targetRole: z.string().max(200).optional(),
+			}),
+		)
+		.use(aiRequestRateLimit)
+		.output(z.string())
+		.errors({
+			BAD_GATEWAY: { message: "The AI provider returned an error or is unreachable.", status: 502 },
+		})
+		.handler(async ({ context, input }) => {
+			try {
+				const [provider, resume] = await Promise.all([
+					getRunnableProvider(context.user.id, input.aiProviderId),
+					resumeService.getById({ id: input.resumeId, userId: context.user.id }),
+				]);
+				return await aiService.resumeToolkit({
+					provider: provider.provider,
+					model: provider.model,
+					apiKey: provider.apiKey,
+					baseURL: provider.baseURL ?? "",
+					resumeData: resume.data,
+					kind: input.kind,
+					jobDescription: input.jobDescription,
+					targetRole: input.targetRole,
+				});
+			} catch (error) {
+				if (isCredentialEncryptionUnavailable(error)) throwCredentialEncryptionUnavailable();
+				if (isInvalidAiBaseUrlError(error)) throwAiProviderConfigError();
+				if (isAiProviderGatewayError(error)) throwAiProviderGatewayError();
+				throw error;
+			}
+		}),
 };

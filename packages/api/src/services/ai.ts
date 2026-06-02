@@ -272,10 +272,47 @@ async function analyzeResume(input: AnalyzeResumeInput): Promise<ResumeAnalysis>
 	return resumeAnalysisSchema.parse(result.output);
 }
 
+const RESUME_TOOLKIT_PROMPTS = {
+	"impress-score":
+		"You are a senior technical recruiter scoring a resume the way a human recruiter skims it in about 6 seconds. Be honest and specific; never invent experience. Return concise GitHub-flavored Markdown with exactly these sections:\n## Impress Score: N/100 — one-line justification\n## What a recruiter sees first — 2-3 sentences on the impression the headline, summary, and first role create in the top third\n## Strengths — 3 bullets of what truly lands\n## Highest-impact fixes — 3 specific, prioritized changes that would raise the score most\n## Verdict — Bullseye / Stretch / Skip versus the job description if one is provided, one line why",
+	"interview-questions":
+		"You are an expert interviewer preparing a candidate using their resume and any job description. Be specific to THIS resume, not generic. Return concise GitHub-flavored Markdown:\n## Technical questions — 6-8 questions drawn from the resume tech stack and any JD requirements; after each add a one-line *Prep:* hint\n## Behavioral questions — 4-5 STAR-style questions tied to the candidate experience; one-line *Prep:* each\n## Gap / risk questions — 3-4 questions probing weak spots or JD requirements the resume does not clearly cover",
+	linkedin:
+		"You write LinkedIn profiles aligned to a target role, truthfully and only from facts present in the resume. Mirror JD keywords where truthful. Return concise GitHub-flavored Markdown:\n## Headline — a single LinkedIn headline under 220 characters, keyword-rich and role-targeted\n## About — a first-person About section, 3-4 short paragraphs under 2,600 characters, recruiter-optimized, ending with a soft call to action",
+} as const;
+
+type ResumeToolkitKind = keyof typeof RESUME_TOOLKIT_PROMPTS;
+
+type ResumeToolkitInput = z.infer<typeof aiCredentialsSchema> & {
+	resumeData: ResumeData;
+	kind: ResumeToolkitKind;
+	jobDescription?: string | undefined;
+	targetRole?: string | undefined;
+};
+
+async function resumeToolkit(input: ResumeToolkitInput): Promise<string> {
+	const model = getModel(input);
+	const userContent =
+		`RESUME:\n${JSON.stringify(input.resumeData)}` +
+		(input.targetRole ? `\n\nTARGET ROLE: ${input.targetRole}` : "") +
+		(input.jobDescription ? `\n\nJOB DESCRIPTION:\n${input.jobDescription}` : "");
+
+	const result = await generateText({
+		model,
+		messages: [
+			{ role: "system", content: RESUME_TOOLKIT_PROMPTS[input.kind] },
+			{ role: "user", content: userContent },
+		],
+	});
+
+	return result.text;
+}
+
 export const aiService = {
 	analyzeResume,
 	chat,
 	parseDocx,
 	parsePdf,
+	resumeToolkit,
 	testConnection,
 };
